@@ -27,6 +27,7 @@ const limiter = rateLimit({
 
 let execAsync = promisify(exec);
 let app = express();
+app.set('trust proxy', 1 /* number of proxies between user and server */);
 app.use(cors());
 app.use(express.json());
 let port = 3000;

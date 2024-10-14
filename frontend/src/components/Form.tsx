@@ -33,7 +33,7 @@ export default function Form({setDeployments}: {setDeployments: ((deployments: s
             });
             console.log("backend response ", response);
             setId(response.data.id);
-            pid = response.data.id;
+            // pid = response.data.id;
         } catch (err) {
             console.error("err: ",err);
         }

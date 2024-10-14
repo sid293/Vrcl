@@ -9,15 +9,15 @@ export default function Deployments({deployments}: {deployments: string[]}){
         "http://yahoo.com"];
     links = deployments;
 
-    const options = {
-        autoClose: 6000,
-        hideProgressBar: false,
-        position: "bottom-left",
-        pauseOnHover: true,
-        progress: 0.2,
-        color:"blue"
-        // and so on ...
-    };
+    // const options = {
+    //     autoClose: 6000,
+    //     hideProgressBar: false,
+    //     position: "bottom-left",
+    //     pauseOnHover: true,
+    //     progress: 0.2,
+    //     color:"blue"
+    //     // and so on ...
+    // };
     function handleClick(){
         console.log("hanlde click");
         // toast("default notification", {position:"bottom-left", autoClose:500});

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import axios, { AxiosHeaders } from "axios";
+import axios from "axios";
 import { toast } from "react-toastify";
 
 const backendUrl = import.meta.env.VITE_BACKEND;
@@ -23,7 +23,6 @@ export default function Form({setDeployments}: {setDeployments: ((deployments: s
         }
         console.log("repo link is ",repoLink);
         let data = {repoUrl:repoLink};
-        let pid = "";
         console.log("url is ",backendUrl);
         let token = sessionStorage.getItem("token");
         try {

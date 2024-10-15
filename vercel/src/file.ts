@@ -37,16 +37,17 @@ export async function uploadFolderTos3(s3filePath: string,localFilePath: string)
     let fileData;
     try{
         fileData = fs.readFileSync(localFilePath);
-    }catch(err){
+        await s3Client.send(
+            new PutObjectCommand({
+                Bucket: "first-v",
+                Key: s3filePath,
+                Body: fileData,
+            })
+        );
+        console.log("folder uploaded to ",s3filePath);
+    } catch (err) {
         console.error("error ",err);
     }
-    await s3Client.send(
-        new PutObjectCommand({
-            Bucket: "first-v",
-            Key: s3filePath,
-            Body: fileData,
-        })
-    );
 
 }
 

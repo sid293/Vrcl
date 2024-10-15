@@ -73,6 +73,7 @@ export async function getAllFilesFroms3(path: string){
 
     //TODO: go through pathsArr and get every file in output folder
     if(!pathsArr) return;
+    console.log("got paths array ", pathsArr.length);
     let filesPromises = pathsArr?.map(async (path) => { 
         if(path === null || path === undefined){
             console.error("path is null");

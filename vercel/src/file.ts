@@ -105,7 +105,11 @@ export async function checkRepoSize(repoUrl: string){
         repo = repo.split(".")[0];
         const apiUrl = `https://api.github.com/repos/${owner}/${repo}`;
         let response = await axios.get(apiUrl);
-        console.log("request successful ",response);
+        console.log("request successful ", response);
+        console.log("response headers");
+        console.log(response.headers['x-ratelimit-limit']);    // Total requests allowed
+        console.log(response.headers['x-ratelimit-remaining']); // Remaining requests
+        console.log(response.headers['x-ratelimit-reset']);
         let size = response.data.size;
         // console.log("repo size: ",size);
         if (size >= 100000) {

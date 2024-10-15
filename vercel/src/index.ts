@@ -128,7 +128,8 @@ app.post("/deploy",verifyToken ,async (req,res)=>{
 
     //TODO: redis, set status of id to cloning
     await redis.hset(id,{status:"cloning"});
-    let repoSize = await checkRepoSize(repoUrl); 
+    // let repoSize = await checkRepoSize(repoUrl);  get this working
+    let repoSize = true;
     if(!repoSize){
         // throw new Error("The repo is too big");
         return res.send({success:false, error:"Repo is too big."});

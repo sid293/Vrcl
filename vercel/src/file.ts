@@ -100,18 +100,19 @@ export function removeLocalRepo(pth: string, id: string){
 
 export async function checkRepoSize(repoUrl: string){
     try {
-        console.log("checkreposize ",repoUrl);
+        console.log("Sending request for repo cloinig");
         let [owner, repo] = repoUrl.split("/").slice(-2);
         repo = repo.split(".")[0];
         const apiUrl = `https://api.github.com/repos/${owner}/${repo}`;
         let response = await axios.get(apiUrl);
+        console.log("request successful ",response);
         let size = response.data.size;
         // console.log("repo size: ",size);
         if (size >= 100000) {
             return false;
         }
     }catch(err){
-        console.error("Error: ",err);
+        console.error("Error repo cloning : ",err);
         return false;
     }
     return true;

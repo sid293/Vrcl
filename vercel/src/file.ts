@@ -100,6 +100,7 @@ export function removeLocalRepo(pth: string, id: string){
 
 export async function checkRepoSize(repoUrl: string){
     try {
+        console.log("checkreposize ",repoUrl);
         let [owner, repo] = repoUrl.split("/").slice(-2);
         repo = repo.split(".")[0];
         const apiUrl = `https://api.github.com/repos/${owner}/${repo}`;

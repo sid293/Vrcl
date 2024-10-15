@@ -61,6 +61,8 @@ export function createFiles(path: string, data: string) {
 }
 
 export async function getAllFilesFroms3(path: string){
+    try{
+
     console.log("getting all files from s3");
     const command = new ListObjectsV2Command({
         Bucket: "first-v",
@@ -89,6 +91,9 @@ export async function getAllFilesFroms3(path: string){
         }
     })
     await Promise.all(filesPromises);
+}catch(err){
+    console.error("error getallfilesfroms3: ",err);
+}
 }
 
 export function removeLocalRepo(pth: string, id: string){

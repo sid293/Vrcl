@@ -72,13 +72,15 @@ export async function getAllFilesFroms3(path: string){
     try{
 
     console.log("getting all files from s3");
-    console.log("path ",path);
+    console.log("path: ",path);
     const command = new ListObjectsV2Command({
-        Bucket: "first-v",
+        Bucket: process.env.BUCKET,
         Prefix: path,
     });
     let response = await s3Client.send(command);
+    console.log("response: ",response);
     let pathsArr = response.Contents?.map((entry)=>entry.Key); //[file,file]
+    console.log("pathsarr: ",pathsArr);
 
     //TODO: go through pathsArr and get every file in output folder
     if(!pathsArr) return;

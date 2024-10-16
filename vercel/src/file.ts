@@ -73,8 +73,15 @@ export async function getAllFilesFroms3(path: string){
         Prefix: path,
     });
     console.log("command ",command);
-    let response = await s3Client.send(command);
-    console.log("response is ",response);
+    // let response = await s3Client.send(command);
+    let response;
+    await s3Client.send(command).then((data)=>{
+        console.log("response data",data);
+        response = data;
+    }).catch((err)=>{
+        console.log("then response error ",err);
+    })
+    if(!response) return;
     let pathsArr = response.Contents?.map((entry)=>entry.Key); //[file,file]
 
     //TODO: go through pathsArr and get every file in output folder

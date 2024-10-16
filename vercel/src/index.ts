@@ -160,7 +160,7 @@ app.post("/deploy",verifyToken ,async (req,res)=>{
     // } catch (err) {
     //     console.error("promise failed ", err);
     // }
-    for(let filePath in allFiles){
+    for(let filePath of allFiles){
         let repoFolderPath = repoRoute;
         let absPathLength = path.join(__dirname,outputRoute).length;
         repoFolderPath = path.join(repoFolderPath,filePath.slice(absPathLength));

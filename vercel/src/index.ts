@@ -188,11 +188,17 @@ app.get("/status",verifyToken ,async (req,res)=>{
 app.get("/deployment",async (req,res)=>{
     console.log("/deployment hit");
     let id = req.query.id as string;
-    let buildFolder = path.join(__dirname,`../builds/${id}`);
-    let buildPath = `builds/${id}`;
+    // let buildRoute = "builds/"
+    let buildFolder = path.join(__dirname,"../",process.env.BULID_ROUTE?? "null",id);
+    // let shouldBeBuildFolder = path.join(__dirname,`../builds/${id}`);
+    // let buildFolder = path.join(__dirname,`../builds/${id}`);
+    // let buildPath = `builds/${id}`;
+    let buildPath = path.join(process.env.BULID_ROUTE?? "null",id);
+    app.use(express.static(buildFolder));
 
     //TODO: check if already present
     if (await checkIfPresent(buildPath)) {
+        console.log("its present");
         res.set("Content-Type", "text/html");
         return res.sendFile(path.join(buildFolder, `index.html`));
     }
@@ -201,7 +207,6 @@ app.get("/deployment",async (req,res)=>{
     await getAllFilesFroms3(buildPath);
 
     //TODO: send it back with correct header 
-    app.use(express.static(buildFolder));
     res.set("Content-Type","text/html");
     res.sendFile(path.join(buildFolder,`index.html`));
     // res.send("done");

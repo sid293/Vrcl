@@ -182,19 +182,25 @@ app.get("/status", verifyToken, (req, res) => __awaiter(void 0, void 0, void 0, 
     res.json({ status: statusResponse });
 }));
 app.get("/deployment", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b;
     console.log("/deployment hit");
     let id = req.query.id;
-    let buildFolder = path_1.default.join(__dirname, `../builds/${id}`);
-    let buildPath = `builds/${id}`;
+    // let buildRoute = "builds/"
+    let buildFolder = path_1.default.join(__dirname, "../", (_a = process.env.BULID_ROUTE) !== null && _a !== void 0 ? _a : "null", id);
+    // let shouldBeBuildFolder = path.join(__dirname,`../builds/${id}`);
+    // let buildFolder = path.join(__dirname,`../builds/${id}`);
+    // let buildPath = `builds/${id}`;
+    let buildPath = path_1.default.join((_b = process.env.BULID_ROUTE) !== null && _b !== void 0 ? _b : "null", id);
+    app.use(express_1.default.static(buildFolder));
     //TODO: check if already present
     if (yield (0, file_1.checkIfPresent)(buildPath)) {
+        console.log("its present");
         res.set("Content-Type", "text/html");
-        res.sendFile(path_1.default.join(buildFolder, `index.html`));
+        return res.sendFile(path_1.default.join(buildFolder, `index.html`));
     }
     //TODO: get build from s3
     yield (0, file_1.getAllFilesFroms3)(buildPath);
     //TODO: send it back with correct header 
-    app.use(express_1.default.static(buildFolder));
     res.set("Content-Type", "text/html");
     res.sendFile(path_1.default.join(buildFolder, `index.html`));
     // res.send("done");

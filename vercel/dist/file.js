@@ -161,6 +161,7 @@ function checkRepoSize(repoUrl) {
 }
 function checkIfPresent(buildPath) {
     return __awaiter(this, void 0, void 0, function* () {
+        console.log("checking if file present");
         try {
             yield fs_1.default.promises.access(buildPath);
             return true;

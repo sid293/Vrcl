@@ -39,12 +39,15 @@ export function getAllFiles(folderPath: string){
 export async function uploadFolderTos3(s3filePath: string,localFilePath: string){
     let fileData;
     try{
-        console.log("uploadfoldertos3 path ",s3filePath,localFilePath);
+        console.log("uploadfoldertos3 path ", s3filePath, localFilePath);
+        if (!fs.existsSync(localFilePath)) {
+            throw new Error(`File not found: ${localFilePath}`);
+        }
         fileData = fs.readFileSync(localFilePath);
         console.log("file data read success");
         await s3Client.send(
             new PutObjectCommand({
-                Bucket: "first-v",
+                Bucket: process.env.BUCKET || "first-v",
                 Key: s3filePath,
                 Body: fileData,
             })

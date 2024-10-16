@@ -1,6 +1,6 @@
 import fs from 'fs';
 import axios from 'axios';
-import {S3Client,PutObjectCommand, ListObjectsV2Command, GetObjectCommand} from "@aws-sdk/client-s3";
+import {S3Client,PutObjectCommand, ListObjectsV2Command, GetObjectCommand, ListObjectsV2CommandOutput} from "@aws-sdk/client-s3";
 import path from 'path';
 import {dirname} from 'path';
 import {exec, spawn} from "child_process";
@@ -74,14 +74,14 @@ export async function getAllFilesFroms3(path: string){
     });
     console.log("command ",command);
     // let response = await s3Client.send(command);
-    let response;
+    let response: ListObjectsV2CommandOutput;
     await s3Client.send(command).then((data)=>{
         console.log("response data",data);
         response = data;
     }).catch((err)=>{
         console.log("then response error ",err);
     })
-    if(!response) return;
+    return;
     let pathsArr = response.Contents?.map((entry)=>entry.Key); //[file,file]
 
     //TODO: go through pathsArr and get every file in output folder

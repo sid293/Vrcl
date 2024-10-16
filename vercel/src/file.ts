@@ -144,6 +144,7 @@ export async function checkRepoSize(repoUrl: string){
 }
 
 export async function checkIfPresent(buildPath: string){
+    console.log("checking if file present");
     try {
         await fs.promises.access(buildPath);
         return true;

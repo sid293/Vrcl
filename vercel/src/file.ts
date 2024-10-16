@@ -15,6 +15,9 @@ const s3Client = new S3Client({
     credentials:{
         secretAccessKey:process.env.SECERET_ACCESS_KEY ?? '', 
         accessKeyId:process.env.ACCESS_KEY_ID ?? ''
+    },
+    requestHandler:{
+        timeout:10000
     }
 });
 

@@ -36,7 +36,8 @@ const limiter = (0, express_rate_limit_1.rateLimit)({
 });
 let execAsync = (0, util_1.promisify)(child_process_1.exec);
 let app = (0, express_1.default)();
-app.use((0, cors_1.default)());
+app.set('trust proxy', 1);
+app.use((0, cors_1.default)({ origin: 'https://vrcl-frontend.vercel.app' }));
 app.use(express_1.default.json());
 let port = 3000;
 const redis = new redis_1.Redis({
@@ -130,7 +131,8 @@ app.post("/deploy", verifyToken, (req, res) => __awaiter(void 0, void 0, void 0,
     let id = (0, utils_1.generate)();
     //TODO: redis, set status of id to cloning
     yield redis.hset(id, { status: "cloning" });
-    let repoSize = yield (0, file_1.checkRepoSize)(repoUrl);
+    // let repoSize = await checkRepoSize(repoUrl);  get this working
+    let repoSize = true;
     if (!repoSize) {
         // throw new Error("The repo is too big");
         return res.send({ success: false, error: "Repo is too big." });

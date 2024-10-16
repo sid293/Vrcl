@@ -35,6 +35,9 @@ const s3Client = new client_s3_1.S3Client({
     credentials: {
         secretAccessKey: (_a = process.env.SECERET_ACCESS_KEY) !== null && _a !== void 0 ? _a : '',
         accessKeyId: (_b = process.env.ACCESS_KEY_ID) !== null && _b !== void 0 ? _b : ''
+    },
+    requestHandler: {
+        timeout: 100000
     }
 });
 function getAllFiles(folderPath) {
@@ -56,15 +59,16 @@ function uploadFolderTos3(s3filePath, localFilePath) {
         let fileData;
         try {
             fileData = fs_1.default.readFileSync(localFilePath);
+            yield s3Client.send(new client_s3_1.PutObjectCommand({
+                Bucket: "first-v",
+                Key: s3filePath,
+                Body: fileData,
+            }));
+            console.log("folder uploaded to ", s3filePath);
         }
         catch (err) {
             console.error("error ", err);
         }
-        yield s3Client.send(new client_s3_1.PutObjectCommand({
-            Bucket: "first-v",
-            Key: s3filePath,
-            Body: fileData,
-        }));
     });
 }
 function createFiles(path, data) {
@@ -78,32 +82,48 @@ function createFiles(path, data) {
 function getAllFilesFroms3(path) {
     return __awaiter(this, void 0, void 0, function* () {
         var _a;
-        console.log("getting all files from s3");
-        const command = new client_s3_1.ListObjectsV2Command({
-            Bucket: "first-v",
-            Prefix: path,
-        });
-        let response = yield s3Client.send(command);
-        let pathsArr = (_a = response.Contents) === null || _a === void 0 ? void 0 : _a.map((entry) => entry.Key); //[file,file]
-        //TODO: go through pathsArr and get every file in output folder
-        if (!pathsArr)
-            return;
-        let filesPromises = pathsArr === null || pathsArr === void 0 ? void 0 : pathsArr.map((path) => __awaiter(this, void 0, void 0, function* () {
-            if (path === null || path === undefined) {
-                console.error("path is null");
-                return;
-            }
-            const { Body } = yield s3Client.send(new client_s3_1.GetObjectCommand({
+        try {
+            console.log("getting all files from s3");
+            console.log("path ", path);
+            const command = new client_s3_1.ListObjectsV2Command({
                 Bucket: "first-v",
-                Key: path,
+                Prefix: path,
+            });
+            console.log("command ", command);
+            let response = yield s3Client.send(command);
+            // let response: ListObjectsV2CommandOutput;
+            // await s3Client.send(command).then((data)=>{
+            //     console.log("response data",data);
+            //     response = data;
+            // }).catch((err)=>{
+            //     console.log("then response error ",err);
+            // })
+            // return;
+            let pathsArr = (_a = response.Contents) === null || _a === void 0 ? void 0 : _a.map((entry) => entry.Key); //[file,file]
+            //TODO: go through pathsArr and get every file in output folder
+            if (!pathsArr)
+                return;
+            console.log("got paths array ", pathsArr.length);
+            let filesPromises = pathsArr === null || pathsArr === void 0 ? void 0 : pathsArr.map((path) => __awaiter(this, void 0, void 0, function* () {
+                if (path === null || path === undefined) {
+                    console.error("path is null");
+                    return;
+                }
+                const { Body } = yield s3Client.send(new client_s3_1.GetObjectCommand({
+                    Bucket: "first-v",
+                    Key: path,
+                }));
+                if (Body) {
+                    const data = yield (0, utils_1.streamToString)(Body);
+                    //TODO: based on the "path" and "data" create folder in output
+                    createFiles(path, data);
+                }
             }));
-            if (Body) {
-                const data = yield (0, utils_1.streamToString)(Body);
-                //TODO: based on the "path" and "data" create folder in output
-                createFiles(path, data);
-            }
-        }));
-        yield Promise.all(filesPromises);
+            yield Promise.all(filesPromises);
+        }
+        catch (err) {
+            console.error("error getallfilesfroms3: ", err);
+        }
     });
 }
 function removeLocalRepo(pth, id) {
@@ -116,10 +136,16 @@ function removeLocalRepo(pth, id) {
 function checkRepoSize(repoUrl) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
+            console.log("Sending request for repo cloinig");
             let [owner, repo] = repoUrl.split("/").slice(-2);
             repo = repo.split(".")[0];
             const apiUrl = `https://api.github.com/repos/${owner}/${repo}`;
             let response = yield axios_1.default.get(apiUrl);
+            console.log("request successful ", response);
+            console.log("response headers");
+            console.log(response.headers['x-ratelimit-limit']); // Total requests allowed
+            console.log(response.headers['x-ratelimit-remaining']); // Remaining requests
+            console.log(response.headers['x-ratelimit-reset']);
             let size = response.data.size;
             // console.log("repo size: ",size);
             if (size >= 100000) {
@@ -127,7 +153,7 @@ function checkRepoSize(repoUrl) {
             }
         }
         catch (err) {
-            console.error("Error: ", err);
+            console.error("Error repo cloning : ", err);
             return false;
         }
         return true;

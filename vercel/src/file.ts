@@ -39,6 +39,7 @@ export function getAllFiles(folderPath: string){
 export async function uploadFolderTos3(s3filePath: string,localFilePath: string){
     let fileData;
     try{
+        console.log("uploadfoldertos3 path ",s3filePath,localFilePath);
         fileData = fs.readFileSync(localFilePath);
         await s3Client.send(
             new PutObjectCommand({

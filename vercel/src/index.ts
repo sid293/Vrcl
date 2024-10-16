@@ -160,13 +160,15 @@ app.post("/deploy",verifyToken ,async (req,res)=>{
     // } catch (err) {
     //     console.error("promise failed ", err);
     // }
-    for(let filePath of allFiles){
+
+
+    allFiles.map(async (filePath)=>{
         let repoFolderPath = repoRoute;
         let absPathLength = path.join(__dirname,outputRoute).length;
         repoFolderPath = path.join(repoFolderPath,filePath.slice(absPathLength));
         console.log("uploading to ",repoFolderPath,filePath);
         await uploadFolderTos3(repoFolderPath,filePath);
-    }
+    })
 
 
     //TODO: remove repo present locally

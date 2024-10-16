@@ -144,11 +144,13 @@ app.post("/deploy",verifyToken ,async (req,res)=>{
     // return;
 
     //TODO: GET FILE DATA AND PUT FILE IN S3 BUCKET WITH DTA
-    let allFiles = getAllFiles(path.join(__dirname,`output/${id}/`)); //[localpath,localpathh,path]
+    let outputRoute = "output/";
+    let repoRoute = "repos/";
+    let allFiles = getAllFiles(path.join(__dirname,outputRoute,id,"/")); //[localpath,localpathh,path]
     // console.log("allfiles ",allFiles);
     allFiles.map(async (filePath)=>{
-        let repoFolderPath = `repos/`;
-        let absPathLength = path.join(__dirname,"output/").length;
+        let repoFolderPath = repoRoute;
+        let absPathLength = path.join(__dirname,outputRoute).length;
         repoFolderPath = path.join(repoFolderPath,filePath.slice(absPathLength));
         console.log("uploading to ",repoFolderPath,filePath);
         await uploadFolderTos3(repoFolderPath,filePath);

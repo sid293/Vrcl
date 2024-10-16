@@ -153,13 +153,17 @@ app.post("/deploy",verifyToken ,async (req,res)=>{
         let absPathLength = path.join(__dirname,outputRoute).length;
         repoFolderPath = path.join(repoFolderPath,filePath.slice(absPathLength));
         console.log("uploading to ",repoFolderPath,filePath);
-        return await uploadFolderTos3(repoFolderPath,filePath);
+        return uploadFolderTos3(repoFolderPath,filePath);
     })
-    await Promise.all(allFilesPromises);
-    console.log("upload complete ");
+    try {
+        await Promise.all(allFilesPromises);
+        console.log("upload complete ");
+    } catch (err) {
+        console.error("promise failed ", err);
+    }
     //TODO: remove repo present locally
     // let repoPath = process.cwd();
-    let repoPath = path.resolve(__dirname,"output");
+    let repoPath = path.resolve(__dirname,outputRoute);
     removeLocalRepo(repoPath,id);
 
     //push id in redis queue

@@ -194,7 +194,7 @@ app.get("/deployment",async (req,res)=>{
     //TODO: check if already present
     if (await checkIfPresent(buildPath)) {
         res.set("Content-Type", "text/html");
-        res.sendFile(path.join(buildFolder, `index.html`));
+        return res.sendFile(path.join(buildFolder, `index.html`));
     }
 
     //TODO: get build from s3

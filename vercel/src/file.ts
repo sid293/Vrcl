@@ -82,29 +82,29 @@ export async function getAllFilesFroms3(path: string){
         console.log("then response error ",err);
     })
     return;
-    let pathsArr = response.Contents?.map((entry)=>entry.Key); //[file,file]
+    // let pathsArr = response.Contents?.map((entry)=>entry.Key); //[file,file]
 
     //TODO: go through pathsArr and get every file in output folder
-    if(!pathsArr) return;
-    console.log("got paths array ", pathsArr.length);
-    let filesPromises = pathsArr?.map(async (path) => { 
-        if(path === null || path === undefined){
-            console.error("path is null");
-            return;
-        }
-        const { Body } = await s3Client.send(
-            new GetObjectCommand({
-                Bucket: "first-v",
-                Key: path,
-            })
-        );
-        if (Body) {
-            const data = await streamToString(Body as NodeJS.ReadableStream);
-            //TODO: based on the "path" and "data" create folder in output
-            createFiles(path,data);
-        }
-    })
-    await Promise.all(filesPromises);
+    // if(!pathsArr) return;
+    // console.log("got paths array ", pathsArr.length);
+    // let filesPromises = pathsArr?.map(async (path) => { 
+    //     if(path === null || path === undefined){
+    //         console.error("path is null");
+    //         return;
+    //     }
+    //     const { Body } = await s3Client.send(
+    //         new GetObjectCommand({
+    //             Bucket: "first-v",
+    //             Key: path,
+    //         })
+    //     );
+    //     if (Body) {
+    //         const data = await streamToString(Body as NodeJS.ReadableStream);
+    //         //TODO: based on the "path" and "data" create folder in output
+    //         createFiles(path,data);
+    //     }
+    // })
+    // await Promise.all(filesPromises);
 }catch(err){
     console.error("error getallfilesfroms3: ",err);
 }

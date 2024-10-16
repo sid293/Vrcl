@@ -147,20 +147,28 @@ app.post("/deploy",verifyToken ,async (req,res)=>{
     let outputRoute = process.env.OUTPUT_ROUTE || "output/";
     let repoRoute = process.env.REPO_ROUTE || "repos/";
     let allFiles = getAllFiles(path.join(__dirname,outputRoute,id,"/")); //[localpath,localpathh,path]
-    // console.log("allfiles ",allFiles);
-    let allFilesPromises = allFiles.map(async (filePath)=>{
+    // let allFilesPromises = allFiles.map(async (filePath)=>{
+    //     let repoFolderPath = repoRoute;
+    //     let absPathLength = path.join(__dirname,outputRoute).length;
+    //     repoFolderPath = path.join(repoFolderPath,filePath.slice(absPathLength));
+    //     console.log("uploading to ",repoFolderPath,filePath);
+    //     return uploadFolderTos3(repoFolderPath,filePath);
+    // })
+    // try {
+    //     await Promise.all(allFilesPromises);
+    //     console.log("upload complete ");
+    // } catch (err) {
+    //     console.error("promise failed ", err);
+    // }
+    for(let filePath in allFiles){
         let repoFolderPath = repoRoute;
         let absPathLength = path.join(__dirname,outputRoute).length;
         repoFolderPath = path.join(repoFolderPath,filePath.slice(absPathLength));
         console.log("uploading to ",repoFolderPath,filePath);
-        return uploadFolderTos3(repoFolderPath,filePath);
-    })
-    try {
-        await Promise.all(allFilesPromises);
-        console.log("upload complete ");
-    } catch (err) {
-        console.error("promise failed ", err);
+        await uploadFolderTos3(repoFolderPath,filePath);
     }
+
+
     //TODO: remove repo present locally
     // let repoPath = process.cwd();
     let repoPath = path.resolve(__dirname,outputRoute);

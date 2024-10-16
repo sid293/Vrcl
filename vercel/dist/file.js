@@ -59,9 +59,13 @@ function uploadFolderTos3(s3filePath, localFilePath) {
         let fileData;
         try {
             console.log("uploadfoldertos3 path ", s3filePath, localFilePath);
+            if (!fs_1.default.existsSync(localFilePath)) {
+                throw new Error(`File not found: ${localFilePath}`);
+            }
             fileData = fs_1.default.readFileSync(localFilePath);
+            console.log("file data read success");
             yield s3Client.send(new client_s3_1.PutObjectCommand({
-                Bucket: "first-v",
+                Bucket: process.env.BUCKET || "first-v",
                 Key: s3filePath,
                 Body: fileData,
             }));
@@ -90,16 +94,7 @@ function getAllFilesFroms3(path) {
                 Bucket: "first-v",
                 Prefix: path,
             });
-            console.log("command ", command);
             let response = yield s3Client.send(command);
-            // let response: ListObjectsV2CommandOutput;
-            // await s3Client.send(command).then((data)=>{
-            //     console.log("response data",data);
-            //     response = data;
-            // }).catch((err)=>{
-            //     console.log("then response error ",err);
-            // })
-            // return;
             let pathsArr = (_a = response.Contents) === null || _a === void 0 ? void 0 : _a.map((entry) => entry.Key); //[file,file]
             //TODO: go through pathsArr and get every file in output folder
             if (!pathsArr)

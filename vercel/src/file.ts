@@ -47,7 +47,7 @@ export async function uploadFolderTos3(s3filePath: string,localFilePath: string)
         console.log("file data read success");
         await s3Client.send(
             new PutObjectCommand({
-                Bucket: process.env.BUCKET || "first-v",
+                Bucket: process.env.BUCKET,
                 Key: s3filePath,
                 Body: fileData,
             })

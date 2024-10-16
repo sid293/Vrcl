@@ -37,7 +37,7 @@ const limiter = (0, express_rate_limit_1.rateLimit)({
 let execAsync = (0, util_1.promisify)(child_process_1.exec);
 let app = (0, express_1.default)();
 app.set('trust proxy', 1);
-app.use((0, cors_1.default)({ origin: 'https://vrcl-frontend.vercel.app' }));
+app.use((0, cors_1.default)({ origin: ['https://vrcl-frontend.vercel.app', 'http://localhost:5173'] }));
 app.use(express_1.default.json());
 let port = 3000;
 const redis = new redis_1.Redis({
@@ -146,19 +146,27 @@ app.post("/deploy", verifyToken, (req, res) => __awaiter(void 0, void 0, void 0,
     }
     // return;
     //TODO: GET FILE DATA AND PUT FILE IN S3 BUCKET WITH DTA
-    let allFiles = (0, file_1.getAllFiles)(path_1.default.join(__dirname, `output/${id}/`)); //[localpath,localpathh,path]
+    let outputRoute = process.env.OUTPUT_ROUTE || "output/";
+    let repoRoute = process.env.REPO_ROUTE || "repos/";
+    let allFiles = (0, file_1.getAllFiles)(path_1.default.join(__dirname, outputRoute, id, "/")); //[localpath,localpathh,path]
     // console.log("allfiles ",allFiles);
-    allFiles.map((filePath) => __awaiter(void 0, void 0, void 0, function* () {
-        let repoFolderPath = `repos/`;
-        let absPathLength = path_1.default.join(__dirname, "output/").length;
+    let allFilesPromises = allFiles.map((filePath) => __awaiter(void 0, void 0, void 0, function* () {
+        let repoFolderPath = repoRoute;
+        let absPathLength = path_1.default.join(__dirname, outputRoute).length;
         repoFolderPath = path_1.default.join(repoFolderPath, filePath.slice(absPathLength));
         console.log("uploading to ", repoFolderPath, filePath);
-        yield (0, file_1.uploadFolderTos3)(repoFolderPath, filePath);
+        return (0, file_1.uploadFolderTos3)(repoFolderPath, filePath);
     }));
-    console.log("upload complete ");
+    try {
+        yield Promise.all(allFilesPromises);
+        console.log("upload complete ");
+    }
+    catch (err) {
+        console.error("promise failed ", err);
+    }
     //TODO: remove repo present locally
     // let repoPath = process.cwd();
-    let repoPath = path_1.default.resolve(__dirname, "output");
+    let repoPath = path_1.default.resolve(__dirname, outputRoute);
     (0, file_1.removeLocalRepo)(repoPath, id);
     //push id in redis queue
     console.log("pushing to redis");

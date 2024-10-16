@@ -28,7 +28,7 @@ const limiter = rateLimit({
 let execAsync = promisify(exec);
 let app = express();
 app.set('trust proxy', 1);
-app.use(cors({ origin: 'https://vrcl-frontend.vercel.app' }));
+app.use(cors({ origin: ['https://vrcl-frontend.vercel.app','http://localhost:5173'] }));
 app.use(express.json());
 let port = 3000;
 const redis = new Redis({

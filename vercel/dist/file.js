@@ -58,6 +58,7 @@ function uploadFolderTos3(s3filePath, localFilePath) {
     return __awaiter(this, void 0, void 0, function* () {
         let fileData;
         try {
+            console.log("uploadfoldertos3 path ", s3filePath, localFilePath);
             fileData = fs_1.default.readFileSync(localFilePath);
             yield s3Client.send(new client_s3_1.PutObjectCommand({
                 Bucket: "first-v",

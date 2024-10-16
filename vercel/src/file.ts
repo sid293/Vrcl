@@ -41,6 +41,7 @@ export async function uploadFolderTos3(s3filePath: string,localFilePath: string)
     try{
         console.log("uploadfoldertos3 path ",s3filePath,localFilePath);
         fileData = fs.readFileSync(localFilePath);
+        console.log("file data read success");
         await s3Client.send(
             new PutObjectCommand({
                 Bucket: "first-v",
@@ -73,16 +74,7 @@ export async function getAllFilesFroms3(path: string){
         Bucket: "first-v",
         Prefix: path,
     });
-    console.log("command ",command);
     let response = await s3Client.send(command);
-    // let response: ListObjectsV2CommandOutput;
-    // await s3Client.send(command).then((data)=>{
-    //     console.log("response data",data);
-    //     response = data;
-    // }).catch((err)=>{
-    //     console.log("then response error ",err);
-    // })
-    // return;
     let pathsArr = response.Contents?.map((entry)=>entry.Key); //[file,file]
 
     //TODO: go through pathsArr and get every file in output folder

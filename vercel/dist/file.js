@@ -28,7 +28,33 @@ const path_2 = require("path");
 const child_process_1 = require("child_process");
 const util_1 = require("util");
 const utils_1 = require("./utils");
+const https_1 = __importDefault(require("https"));
 let execAsync = (0, util_1.promisify)(child_process_1.exec);
+function createS3Client() {
+    const clientOptions = {
+        region: process.env.AWS_REGION,
+        credentials: {
+            accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+        },
+    };
+    // Check if a proxy is defined
+    if (process.env.HTTPS_PROXY || process.env.HTTP_PROXY) {
+        console.log("https proxy ", process.env.HTTPS_PROXY);
+        console.log("http proxy ", process.env.HTTP_PROXY);
+        const proxyAgent = new https_1.default.Agent(Object.assign(Object.assign({}, https_1.default.globalAgent.options), { proxy: process.env.HTTPS_PROXY || process.env.HTTP_PROXY }));
+        // clientOptions.requestHandler = new NodeHttpHandler({
+        //     httpAgent: proxyAgent,
+        //     httpsAgent: proxyAgent,
+        // });
+    }
+    //   return new S3Client(clientOptions);
+}
+if (process.env.HTTPS_PROXY || process.env.HTTP_PROXY) {
+    console.log("proxy is present");
+    console.log("https proxy ", process.env.HTTPS_PROXY);
+    console.log("http proxy ", process.env.HTTP_PROXY);
+}
 const s3Client = new client_s3_1.S3Client({
     region: process.env.REGION,
     endpoint: process.env.ENDPOINT,
@@ -65,7 +91,7 @@ function uploadFolderTos3(s3filePath, localFilePath) {
             fileData = fs_1.default.readFileSync(localFilePath);
             console.log("file data read success");
             yield s3Client.send(new client_s3_1.PutObjectCommand({
-                Bucket: process.env.BUCKET || "first-v",
+                Bucket: process.env.BUCKET,
                 Key: s3filePath,
                 Body: fileData,
             }));
@@ -89,9 +115,9 @@ function getAllFilesFroms3(path) {
         var _a;
         try {
             console.log("getting all files from s3");
-            console.log("path ", path);
+            console.log("path: ", path);
             const command = new client_s3_1.ListObjectsV2Command({
-                Bucket: "first-v",
+                Bucket: process.env.BUCKET,
                 Prefix: path,
             });
             let response = yield s3Client.send(command);

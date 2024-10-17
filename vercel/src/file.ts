@@ -1,14 +1,46 @@
 import fs from 'fs';
 import axios from 'axios';
-import {S3Client,PutObjectCommand, ListObjectsV2Command, GetObjectCommand, ListObjectsV2CommandOutput} from "@aws-sdk/client-s3";
+import {S3Client, PutObjectCommand, ListObjectsV2Command, GetObjectCommand, ListObjectsV2CommandOutput} from "@aws-sdk/client-s3";
 import path from 'path';
 import {dirname} from 'path';
 import {exec, spawn} from "child_process";
 import {promisify} from "util";
 import {streamToString} from "./utils";
+import https from 'https';
 
 let execAsync = promisify(exec);
 
+function createS3Client() {
+  const clientOptions = {
+    region: process.env.AWS_REGION,
+    credentials: {
+      accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    },
+  };
+
+  // Check if a proxy is defined
+    if (process.env.HTTPS_PROXY || process.env.HTTP_PROXY) {
+        console.log("https proxy ", process.env.HTTPS_PROXY);
+        console.log("http proxy ", process.env.HTTP_PROXY);
+        const proxyAgent = new https.Agent({
+            ...https.globalAgent.options,
+            proxy: process.env.HTTPS_PROXY || process.env.HTTP_PROXY,
+        } as any);
+        // clientOptions.requestHandler = new NodeHttpHandler({
+        //     httpAgent: proxyAgent,
+        //     httpsAgent: proxyAgent,
+        // });
+    }
+
+//   return new S3Client(clientOptions);
+}
+
+  if (process.env.HTTPS_PROXY || process.env.HTTP_PROXY) {
+    console.log("proxy is present");
+    console.log("https proxy ",process.env.HTTPS_PROXY);
+    console.log("http proxy ",process.env.HTTP_PROXY);
+  }
 const s3Client = new S3Client({
     region:process.env.REGION,
     endpoint:process.env.ENDPOINT,
@@ -78,9 +110,7 @@ export async function getAllFilesFroms3(path: string){
         Prefix: path,
     });
     let response = await s3Client.send(command);
-    console.log("response: ",response);
     let pathsArr = response.Contents?.map((entry)=>entry.Key); //[file,file]
-    console.log("pathsarr: ",pathsArr);
 
     //TODO: go through pathsArr and get every file in output folder
     if(!pathsArr) return;

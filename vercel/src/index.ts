@@ -18,6 +18,12 @@ import { nextTick } from "process";
 import {Request, Response, NextFunction} from 'express';
 import {rateLimit} from 'express-rate-limit';
 
+async function delay(time: number){
+    return new Promise((resolve)=>{
+        setTimeout(resolve, time);
+    })
+}
+
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     limit:100,
@@ -147,27 +153,30 @@ app.post("/deploy",verifyToken ,async (req,res)=>{
     let outputRoute = process.env.OUTPUT_ROUTE || "output/";
     let repoRoute = process.env.REPO_ROUTE || "repos/";
     let allFiles = getAllFiles(path.join(__dirname,outputRoute,id,"/")); //[localpath,localpathh,path]
-    let allFilesPromises = allFiles.map(async (filePath)=>{
-        let repoFolderPath = repoRoute;
-        let absPathLength = path.join(__dirname,outputRoute).length;
-        repoFolderPath = path.join(repoFolderPath,filePath.slice(absPathLength));
-        console.log("uploading to ",repoFolderPath,filePath);
-        return uploadFolderTos3(repoFolderPath,filePath);
-    })
-    try {
-        await Promise.all(allFilesPromises);
-        console.log("upload to s3 complete ");
-    } catch (err) {
-        console.error("promise failed ", err);
-    }
 
-
-    // allFiles.map(async (filePath)=>{
+    // let allFilesPromises = allFiles.map(async (filePath)=>{
     //     let repoFolderPath = repoRoute;
     //     let absPathLength = path.join(__dirname,outputRoute).length;
     //     repoFolderPath = path.join(repoFolderPath,filePath.slice(absPathLength));
-    //     // console.log("uploading to ",repoFolderPath,filePath);
-    //     await uploadFolderTos3(repoFolderPath,filePath);
+    //     console.log("uploading to ",repoFolderPath,filePath);
+    //     return uploadFolderTos3(repoFolderPath,filePath);
+    // })
+    // try {
+    //     await Promise.all(allFilesPromises);
+    //     console.log("upload to s3 complete ");
+    // } catch (err) {
+    //     console.error("promise failed ", err);
+    // }
+
+    // allFiles.map(async (filePath)=>{
+    for(let filePath of allFiles){
+        let repoFolderPath = repoRoute;
+        let absPathLength = path.join(__dirname,outputRoute).length;
+        repoFolderPath = path.join(repoFolderPath,filePath.slice(absPathLength));
+        // console.log("uploading to ",repoFolderPath,filePath);
+        await delay(1000);
+        await uploadFolderTos3(repoFolderPath,filePath);
+    }
     // })
 
 
@@ -205,11 +214,7 @@ app.get("/status",verifyToken ,async (req,res)=>{
 app.get("/deployment",async (req,res)=>{
     console.log("/deployment hit");
     let id = req.query.id as string;
-    // let buildRoute = "builds/"
     let buildFolder = path.join(__dirname,"../",process.env.BULID_ROUTE?? "null",id);
-    // let shouldBeBuildFolder = path.join(__dirname,`../builds/${id}`);
-    // let buildFolder = path.join(__dirname,`../builds/${id}`);
-    // let buildPath = `builds/${id}`;
     let buildPath = path.join(process.env.BULID_ROUTE?? "null",id);
     app.use(express.static(buildFolder));
 

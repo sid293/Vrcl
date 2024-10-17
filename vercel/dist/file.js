@@ -23,6 +23,7 @@ exports.checkIfPresent = checkIfPresent;
 const fs_1 = __importDefault(require("fs"));
 const axios_1 = __importDefault(require("axios"));
 const client_s3_1 = require("@aws-sdk/client-s3");
+const node_http_handler_1 = require("@smithy/node-http-handler");
 const path_1 = __importDefault(require("path"));
 const path_2 = require("path");
 const child_process_1 = require("child_process");
@@ -62,9 +63,9 @@ const s3Client = new client_s3_1.S3Client({
         secretAccessKey: (_a = process.env.SECERET_ACCESS_KEY) !== null && _a !== void 0 ? _a : '',
         accessKeyId: (_b = process.env.ACCESS_KEY_ID) !== null && _b !== void 0 ? _b : ''
     },
-    requestHandler: {
-        timeout: 100000
-    }
+    requestHandler: new node_http_handler_1.NodeHttpHandler({
+        connectionTimeout: 100000,
+    })
 });
 function getAllFiles(folderPath) {
     let response = [];
@@ -95,7 +96,7 @@ function uploadFolderTos3(s3filePath, localFilePath) {
                 Key: s3filePath,
                 Body: fileData,
             }));
-            console.log("folder uploaded to ", s3filePath);
+            console.log("folder uploaded to s3: ", s3filePath);
         }
         catch (err) {
             console.error("error ", err);
@@ -125,8 +126,9 @@ function getAllFilesFroms3(path) {
             //TODO: go through pathsArr and get every file in output folder
             if (!pathsArr)
                 return;
-            console.log("got paths array ", pathsArr.length);
-            let filesPromises = pathsArr === null || pathsArr === void 0 ? void 0 : pathsArr.map((path) => __awaiter(this, void 0, void 0, function* () {
+            console.log("got paths array length: ", pathsArr.length);
+            // let filesPromises = pathsArr?.map(async (path) => { 
+            for (let path of pathsArr) {
                 if (path === null || path === undefined) {
                     console.error("path is null");
                     return;
@@ -140,8 +142,9 @@ function getAllFilesFroms3(path) {
                     //TODO: based on the "path" and "data" create folder in output
                     createFiles(path, data);
                 }
-            }));
-            yield Promise.all(filesPromises);
+            }
+            // })
+            // await Promise.all(filesPromises);
         }
         catch (err) {
             console.error("error getallfilesfroms3: ", err);

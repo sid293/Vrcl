@@ -149,26 +149,27 @@ app.post("/deploy", verifyToken, (req, res) => __awaiter(void 0, void 0, void 0,
     let outputRoute = process.env.OUTPUT_ROUTE || "output/";
     let repoRoute = process.env.REPO_ROUTE || "repos/";
     let allFiles = (0, file_1.getAllFiles)(path_1.default.join(__dirname, outputRoute, id, "/")); //[localpath,localpathh,path]
-    let allFilesPromises = allFiles.map((filePath) => __awaiter(void 0, void 0, void 0, function* () {
-        let repoFolderPath = repoRoute;
-        let absPathLength = path_1.default.join(__dirname, outputRoute).length;
-        repoFolderPath = path_1.default.join(repoFolderPath, filePath.slice(absPathLength));
-        console.log("uploading to ", repoFolderPath, filePath);
-        return (0, file_1.uploadFolderTos3)(repoFolderPath, filePath);
-    }));
-    try {
-        yield Promise.all(allFilesPromises);
-        console.log("upload to s3 complete ");
-    }
-    catch (err) {
-        console.error("promise failed ", err);
-    }
-    // allFiles.map(async (filePath)=>{
+    // let allFilesPromises = allFiles.map(async (filePath)=>{
     //     let repoFolderPath = repoRoute;
     //     let absPathLength = path.join(__dirname,outputRoute).length;
     //     repoFolderPath = path.join(repoFolderPath,filePath.slice(absPathLength));
-    //     // console.log("uploading to ",repoFolderPath,filePath);
-    //     await uploadFolderTos3(repoFolderPath,filePath);
+    //     console.log("uploading to ",repoFolderPath,filePath);
+    //     return uploadFolderTos3(repoFolderPath,filePath);
+    // })
+    // try {
+    //     await Promise.all(allFilesPromises);
+    //     console.log("upload to s3 complete ");
+    // } catch (err) {
+    //     console.error("promise failed ", err);
+    // }
+    // allFiles.map(async (filePath)=>{
+    for (let filePath of allFiles) {
+        let repoFolderPath = repoRoute;
+        let absPathLength = path_1.default.join(__dirname, outputRoute).length;
+        repoFolderPath = path_1.default.join(repoFolderPath, filePath.slice(absPathLength));
+        // console.log("uploading to ",repoFolderPath,filePath);
+        yield (0, file_1.uploadFolderTos3)(repoFolderPath, filePath);
+    }
     // })
     //TODO: remove repo present locally
     // let repoPath = process.cwd();
@@ -199,11 +200,7 @@ app.get("/deployment", (req, res) => __awaiter(void 0, void 0, void 0, function*
     var _a, _b;
     console.log("/deployment hit");
     let id = req.query.id;
-    // let buildRoute = "builds/"
     let buildFolder = path_1.default.join(__dirname, "../", (_a = process.env.BULID_ROUTE) !== null && _a !== void 0 ? _a : "null", id);
-    // let shouldBeBuildFolder = path.join(__dirname,`../builds/${id}`);
-    // let buildFolder = path.join(__dirname,`../builds/${id}`);
-    // let buildPath = `builds/${id}`;
     let buildPath = path_1.default.join((_b = process.env.BULID_ROUTE) !== null && _b !== void 0 ? _b : "null", id);
     app.use(express_1.default.static(buildFolder));
     //TODO: check if already present

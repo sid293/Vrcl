@@ -38,7 +38,6 @@ export default function Form({setDeployments}: {setDeployments: ((deployments: s
             console.error("err: ",err);
         }
         //TODO: implement polling here
-        // console.log("pid is ",pid);
         // pollingStatus(pid);
     }
 

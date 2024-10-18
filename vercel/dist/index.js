@@ -28,6 +28,13 @@ const util_1 = require("util");
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const uuid_1 = require("uuid");
 const express_rate_limit_1 = require("express-rate-limit");
+function delay(time) {
+    return __awaiter(this, void 0, void 0, function* () {
+        return new Promise((resolve) => {
+            setTimeout(resolve, time);
+        });
+    });
+}
 const limiter = (0, express_rate_limit_1.rateLimit)({
     windowMs: 15 * 60 * 1000,
     limit: 100,
@@ -168,6 +175,7 @@ app.post("/deploy", verifyToken, (req, res) => __awaiter(void 0, void 0, void 0,
         let absPathLength = path_1.default.join(__dirname, outputRoute).length;
         repoFolderPath = path_1.default.join(repoFolderPath, filePath.slice(absPathLength));
         // console.log("uploading to ",repoFolderPath,filePath);
+        yield delay(1000);
         yield (0, file_1.uploadFolderTos3)(repoFolderPath, filePath);
     }
     // })

@@ -2,6 +2,8 @@ import fs from 'fs';
 import axios from 'axios';
 import {S3Client, PutObjectCommand, ListObjectsV2Command, GetObjectCommand, ListObjectsV2CommandOutput} from "@aws-sdk/client-s3";
 import {NodeHttpHandler} from "@smithy/node-http-handler";
+import {Agent as HttpAgent} from 'http';
+// import {NodeHttpHandler} from "@aws-sdk/node-http-handler";
 import path from 'path';
 import {dirname} from 'path';
 import {exec, spawn} from "child_process";
@@ -10,38 +12,11 @@ import {streamToString} from "./utils";
 import https from 'https';
 
 let execAsync = promisify(exec);
+let customHttpAgent = new HttpAgent({
+    family:4,
+    timeout:100000
+})
 
-function createS3Client() {
-  const clientOptions = {
-    region: process.env.AWS_REGION,
-    credentials: {
-      accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-    },
-  };
-
-  // Check if a proxy is defined
-    if (process.env.HTTPS_PROXY || process.env.HTTP_PROXY) {
-        console.log("https proxy ", process.env.HTTPS_PROXY);
-        console.log("http proxy ", process.env.HTTP_PROXY);
-        const proxyAgent = new https.Agent({
-            ...https.globalAgent.options,
-            proxy: process.env.HTTPS_PROXY || process.env.HTTP_PROXY,
-        } as any);
-        // clientOptions.requestHandler = new NodeHttpHandler({
-        //     httpAgent: proxyAgent,
-        //     httpsAgent: proxyAgent,
-        // });
-    }
-
-//   return new S3Client(clientOptions);
-}
-
-  if (process.env.HTTPS_PROXY || process.env.HTTP_PROXY) {
-    console.log("proxy is present");
-    console.log("https proxy ",process.env.HTTPS_PROXY);
-    console.log("http proxy ",process.env.HTTP_PROXY);
-  }
 const s3Client = new S3Client({
     region:process.env.REGION,
     endpoint:process.env.ENDPOINT,
@@ -51,6 +26,10 @@ const s3Client = new S3Client({
     },
     requestHandler:new NodeHttpHandler({
         connectionTimeout:100000,
+        // httpOptions:{
+        //     family:4
+        // }
+        httpAgent: customHttpAgent
     })
 });
 

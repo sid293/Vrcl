@@ -111,6 +111,13 @@ function createFiles(path, data) {
     }
     fs_1.default.writeFileSync(path !== null && path !== void 0 ? path : "./output", data);
 }
+function delay(time) {
+    return __awaiter(this, void 0, void 0, function* () {
+        return new Promise((resolve) => {
+            setTimeout(resolve, time);
+        });
+    });
+}
 function getAllFilesFroms3(path) {
     return __awaiter(this, void 0, void 0, function* () {
         var _a;
@@ -141,6 +148,7 @@ function getAllFilesFroms3(path) {
                     const data = yield (0, utils_1.streamToString)(Body);
                     //TODO: based on the "path" and "data" create folder in output
                     createFiles(path, data);
+                    yield delay(1000);
                 }
             }
             // })

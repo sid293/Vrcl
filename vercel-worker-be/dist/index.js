@@ -35,6 +35,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = __importDefault(require("express"));
+const cors_1 = __importDefault(require("cors"));
 const child_process_1 = require("child_process");
 const util_1 = require("util");
 const fs_1 = __importDefault(require("fs"));
@@ -43,57 +45,35 @@ require("dotenv/config");
 const file_1 = require("./file");
 const utils_1 = require("./utils");
 const path = __importStar(require("path"));
-// import {S3Client,ListObjectsV2Command ,PutObjectCommand, GetObjectCommand} from "@aws-sdk/client-s3";
 let execAsync = (0, util_1.promisify)(child_process_1.exec);
+let app = (0, express_1.default)();
+app.use((0, cors_1.default)());
 console.log("worker started");
 const redis = new redis_1.Redis({
     url: process.env.REDIS_URL,
     token: process.env.REDIS_TOKEN
 });
 let queueName = "vercelque";
-// const s3Client = new S3Client({
-//     region:process.env.REGION,
-//     endpoint:process.env.ENDPOINT,
-//     credentials:{
-//         secretAccessKey:process.env.SECERET_ACCESS_KEY ?? '', 
-//         accessKeyId:process.env.ACCESS_KEY_ID ?? ''
-//     }
-// });
-// async function delay(time: number){
-//     return new Promise((resolve)=>{
-//         setTimeout(resolve, time);
-//     })
-// }
 function ProcessQueue() {
     return __awaiter(this, void 0, void 0, function* () {
         let count = 0;
-        while (count < 1) {
+        while (count < 20) {
             console.log("loop running ");
-            // count ++; TESTING
+            count++;
             //TODO: if id exist get id from redis queue
             let id = yield redis.rpop(queueName);
-            // let id = "s2z6y"; //TESTING 
-            // console.log("id ",id);
             if (!id) {
-                yield (0, utils_1.delay)(5000);
+                yield (0, utils_1.delay)(10000);
                 continue;
             }
             let reposPath = `repos/${id}`;
             //TODO: get repo from s3 store to local
             try {
-                // console.log("delay 3");
-                yield (0, utils_1.delay)(3000);
-                yield (0, file_1.getAllFilesFroms3)(reposPath);
+                yield (0, file_1.getAllFilesFroms3)(reposPath, redis, id);
             }
             catch (err) {
                 console.error(err);
             }
-            // try{
-            // await delay(1000);
-            // }catch(err){
-            // console.log('err ',err);
-            // }
-            // console.log("got files from s3");
             try {
                 //TODO: build project
                 let buildResponse = yield (0, file_1.buildRepo)(reposPath);
@@ -102,10 +82,6 @@ function ProcessQueue() {
                     console.log("build failed returning");
                     continue;
                 }
-                // let buildResult = await execAsync("npm run build"); //repos/ip/build
-                // clearTimeout(tmr);
-                // console.log("build result ",buildResult);
-                // await delay(1000);
                 //TODO: push build to s3
                 console.log("pushing build to s3");
                 let outputDir = '';
@@ -145,38 +121,9 @@ function ProcessQueue() {
         }
     });
 }
-// function streamToString(stream: NodeJS.ReadableStream): Promise<string>{
-//     const chunks: Uint8Array[] = [];
-//     return new Promise((resolve,reject)=>{
-//         stream.on("data",(chunk)=> chunks.push(chunk));
-//         stream.on("error",(err)=> reject(err));
-//         stream.on("end",()=> resolve(Buffer.concat(chunks).toString("utf8")));
-//     })
-// }
-// async function getAllFilesFroms3(path: string){
-//     const command = new ListObjectsV2Command({
-//         Bucket: "first-v",
-//         Prefix: path,
-//     });
-//     let response = await s3Client.send(command);
-//     let pathsArr = response.Contents?.map((entry)=>entry.Key); //[file,file]
-//     //TODO: go through pathsArr and get every file in output folder
-//     pathsArr?.map(async (path) => { //repos/id/filepath
-//         if(path === null || path === undefined){
-//             console.error("path is null");
-//             return;
-//         }
-//         const { Body } = await s3Client.send(
-//             new GetObjectCommand({
-//                 Bucket: "first-v",
-//                 Key: path,
-//             })
-//         );
-//         if (Body) {
-//             const data = await streamToString(Body as NodeJS.ReadableStream);
-//             //TODO: based on the "path" and "data" create folder in output
-//             createFiles(path,data);
-//         }
-//     })
-// }
-ProcessQueue();
+app.get("/start", (req, res) => {
+    ProcessQueue();
+});
+app.listen(3001, () => {
+    console.log("app running on port 3001");
+});

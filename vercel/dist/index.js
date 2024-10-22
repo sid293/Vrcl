@@ -11,30 +11,23 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
-var _a, _b;
 Object.defineProperty(exports, "__esModule", { value: true });
-// import {Client} from "@upstash/qstash";
 const redis_1 = require("@upstash/redis");
 const express_1 = __importDefault(require("express"));
+// import {Readable} from 'stream';
 require("dotenv/config");
+// import fs from 'fs';
 const cors_1 = __importDefault(require("cors"));
+const axios_1 = __importDefault(require("axios"));
 const simple_git_1 = __importDefault(require("simple-git"));
 const path_1 = __importDefault(require("path"));
 const utils_1 = require("./utils");
 const file_1 = require("./file");
-const client_s3_1 = require("@aws-sdk/client-s3");
 const child_process_1 = require("child_process");
 const util_1 = require("util");
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const uuid_1 = require("uuid");
 const express_rate_limit_1 = require("express-rate-limit");
-function delay(time) {
-    return __awaiter(this, void 0, void 0, function* () {
-        return new Promise((resolve) => {
-            setTimeout(resolve, time);
-        });
-    });
-}
 const limiter = (0, express_rate_limit_1.rateLimit)({
     windowMs: 15 * 60 * 1000,
     limit: 100,
@@ -43,7 +36,6 @@ const limiter = (0, express_rate_limit_1.rateLimit)({
 });
 let execAsync = (0, util_1.promisify)(child_process_1.exec);
 let app = (0, express_1.default)();
-app.set('trust proxy', 1);
 app.use((0, cors_1.default)({ origin: ['https://vrcl-frontend.vercel.app', 'http://localhost:5173'] }));
 app.use(express_1.default.json());
 let port = 3000;
@@ -52,66 +44,7 @@ const redis = new redis_1.Redis({
     token: process.env.REDIS_TOKEN
 });
 let queueName = "vercelque";
-// const s3Client = new S3Client({
-//     region:"eu-central",
-//     endpoint:"https://s3.eu-central-003.backblazeb2.com",
-//     credentials:{
-//         secretAccessKey:"K003nsWKvSQdr4QrWmFA4Y0mZTdw/uE", 
-//         accessKeyId:"0035fb03ac09cc80000000001"
-//     }
-// });
-const s3Client = new client_s3_1.S3Client({
-    region: process.env.REGION,
-    endpoint: process.env.ENDPOINT,
-    credentials: {
-        secretAccessKey: (_a = process.env.SECERET_ACCESS_KEY) !== null && _a !== void 0 ? _a : '',
-        accessKeyId: (_b = process.env.ACCESS_KEY_ID) !== null && _b !== void 0 ? _b : ''
-    }
-});
-// console.log("allfiles ",path.join(__dirname,"output/"));
-// app.get("/redis",async (req,res)=>{
-//     await redis.lpush(queueName,"data1");
-//     let peek = await redis.lrange(queueName,-1,-1);
-//     console.log("peek ",peek);
-//     let ans = await redis.rpop(queueName);
-//     console.log("ans ",ans);
-//     res.send("completed");
-// })
-// app.get("/test", async (req, res) => {
-//     let fileData;
-//     try{
-//         fileData = fs.readFileSync(path.join(__dirname,"my-first-object.txt"),"utf-8");
-//         console.log('file data ',fileData);
-//     }catch(err){
-//         console.error("error ",err);
-//     }
-//     await s3Client.send(
-//         new PutObjectCommand({
-//             Bucket: "first-v",
-//             Key: "newfolder/my-first-object.txt",
-//             Body: fileData,
-//         })
-//     );
-//     const { Body } = await s3Client.send(
-//         new GetObjectCommand({
-//         Bucket: "first-v",
-//         Key: "newfolder/my-first-object.txt",
-//         })
-//     );
-//     if(Body){
-//         const data = await streamToString(Body as NodeJS.ReadableStream);
-//         console.log("body ",data);
-//     }
-//     res.send("hellow");
-// })
-// function streamToString(stream: NodeJS.ReadableStream): Promise<string>{
-//     const chunks: Uint8Array[] = [];
-//     return new Promise((resolve,reject)=>{
-//         stream.on("data",(chunk)=> chunks.push(chunk));
-//         stream.on("error",(err)=> reject(err));
-//         stream.on("end",()=> resolve(Buffer.concat(chunks).toString("utf8")));
-//     })
-// }
+//redis.lpush(queueName,"v7z61");
 function verifyToken(req, res, next) {
     try {
         if (!process.env.SECERET_PHRASE) {
@@ -133,6 +66,17 @@ function verifyToken(req, res, next) {
 }
 //should put it in r2 and put in queue redis 
 app.post("/deploy", verifyToken, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    //TODO: getting worker function ready
+    // axios.post(process.env.WORKER_ENDPOINT?? "",{
+    //     name:"Hello World"
+    // },{
+    //     headers:{
+    //         'Authorization':`Bearer ${process.env.WORKER_TOKEN}`,
+    //         'Content-Type':'application/json'
+    //     }
+    // })
+    axios_1.default.get((_a = process.env.WORKER_ENDPOINT) !== null && _a !== void 0 ? _a : "");
     console.log("/deploy hit");
     const repoUrl = req.body.repoUrl;
     let id = (0, utils_1.generate)();
@@ -156,41 +100,34 @@ app.post("/deploy", verifyToken, (req, res) => __awaiter(void 0, void 0, void 0,
     let outputRoute = process.env.OUTPUT_ROUTE || "output/";
     let repoRoute = process.env.REPO_ROUTE || "repos/";
     let allFiles = (0, file_1.getAllFiles)(path_1.default.join(__dirname, outputRoute, id, "/")); //[localpath,localpathh,path]
-    // let allFilesPromises = allFiles.map(async (filePath)=>{
-    //     let repoFolderPath = repoRoute;
-    //     let absPathLength = path.join(__dirname,outputRoute).length;
-    //     repoFolderPath = path.join(repoFolderPath,filePath.slice(absPathLength));
-    //     console.log("uploading to ",repoFolderPath,filePath);
-    //     return uploadFolderTos3(repoFolderPath,filePath);
-    // })
-    // try {
-    //     await Promise.all(allFilesPromises);
-    //     console.log("upload to s3 complete ");
-    // } catch (err) {
-    //     console.error("promise failed ", err);
-    // }
-    // allFiles.map(async (filePath)=>{
-    for (let filePath of allFiles) {
+    let allFilesPromises = allFiles.map((filePath) => __awaiter(void 0, void 0, void 0, function* () {
         let repoFolderPath = repoRoute;
         let absPathLength = path_1.default.join(__dirname, outputRoute).length;
         repoFolderPath = path_1.default.join(repoFolderPath, filePath.slice(absPathLength));
-        // console.log("uploading to ",repoFolderPath,filePath);
-        yield delay(1000);
-        yield (0, file_1.uploadFolderTos3)(repoFolderPath, filePath);
+        console.log("uploading to ", repoFolderPath, filePath);
+        return (0, file_1.uploadFolderTos3)(repoFolderPath, filePath);
+    }));
+    try {
+        yield Promise.all(allFilesPromises);
+        console.log("upload to s3 complete ");
     }
-    // })
+    catch (err) {
+        console.error("promise failed ", err);
+    }
     //TODO: remove repo present locally
     // let repoPath = process.cwd();
     let repoPath = path_1.default.resolve(__dirname, outputRoute);
     (0, file_1.removeLocalRepo)(repoPath, id);
     //push id in redis queue
-    console.log("pushing to redis");
+    console.log("pushing id to redis");
     yield redis.lpush(queueName, id);
     //TODO: redis, set status of id to "building"
     yield redis.hset(id, { status: "building" });
-    //TODO: delete output folder
+    //TODO: delete output folder - testing i think they are deleted
     //change dir to output 
-    // process.chdir();
+    // process.chdir("output");
+    // console.log("want to remvoe everythign inside output foler where am i?");
+    // console.log(process.cwd());
     //remove everything from it - rm -r *
     // await execAsync("rm -r *");
     res.json({
@@ -199,8 +136,8 @@ app.post("/deploy", verifyToken, (req, res) => __awaiter(void 0, void 0, void 0,
 }));
 app.get("/status", verifyToken, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     let id = req.query.id;
-    console.log("hit status with id ", id);
-    //TODO: get status from redis and send it back
+    console.log("hit status with id: ", id);
+    //:get status from redis and send it back
     let statusResponse = yield redis.hget(id, "status");
     res.json({ status: statusResponse });
 }));
@@ -213,7 +150,7 @@ app.get("/deployment", (req, res) => __awaiter(void 0, void 0, void 0, function*
     app.use(express_1.default.static(buildFolder));
     //TODO: check if already present
     if (yield (0, file_1.checkIfPresent)(buildPath)) {
-        console.log("its present");
+        console.log("build already present");
         res.set("Content-Type", "text/html");
         return res.sendFile(path_1.default.join(buildFolder, `index.html`));
     }
@@ -222,7 +159,6 @@ app.get("/deployment", (req, res) => __awaiter(void 0, void 0, void 0, function*
     //TODO: send it back with correct header 
     res.set("Content-Type", "text/html");
     res.sendFile(path_1.default.join(buildFolder, `index.html`));
-    // res.send("done");
 }));
 app.get("/token", limiter, (req, res) => {
     if (!process.env.SECERET_PHRASE) {
@@ -238,7 +174,6 @@ app.post("/checkToken", (req, res) => {
     }
     let token = req.body.token;
     let decoded = jsonwebtoken_1.default.verify(token, process.env.SECERET_PHRASE);
-    console.log("decoded and ", decoded);
 });
 app.listen(port, () => {
     console.log("app listening on port ", port);

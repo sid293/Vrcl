@@ -24,38 +24,17 @@ const fs_1 = __importDefault(require("fs"));
 const axios_1 = __importDefault(require("axios"));
 const client_s3_1 = require("@aws-sdk/client-s3");
 const node_http_handler_1 = require("@smithy/node-http-handler");
+const http_1 = require("http");
 const path_1 = __importDefault(require("path"));
 const path_2 = require("path");
 const child_process_1 = require("child_process");
 const util_1 = require("util");
 const utils_1 = require("./utils");
-const https_1 = __importDefault(require("https"));
 let execAsync = (0, util_1.promisify)(child_process_1.exec);
-function createS3Client() {
-    const clientOptions = {
-        region: process.env.AWS_REGION,
-        credentials: {
-            accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-        },
-    };
-    // Check if a proxy is defined
-    if (process.env.HTTPS_PROXY || process.env.HTTP_PROXY) {
-        console.log("https proxy ", process.env.HTTPS_PROXY);
-        console.log("http proxy ", process.env.HTTP_PROXY);
-        const proxyAgent = new https_1.default.Agent(Object.assign(Object.assign({}, https_1.default.globalAgent.options), { proxy: process.env.HTTPS_PROXY || process.env.HTTP_PROXY }));
-        // clientOptions.requestHandler = new NodeHttpHandler({
-        //     httpAgent: proxyAgent,
-        //     httpsAgent: proxyAgent,
-        // });
-    }
-    //   return new S3Client(clientOptions);
-}
-if (process.env.HTTPS_PROXY || process.env.HTTP_PROXY) {
-    console.log("proxy is present");
-    console.log("https proxy ", process.env.HTTPS_PROXY);
-    console.log("http proxy ", process.env.HTTP_PROXY);
-}
+let customHttpAgent = new http_1.Agent({
+    family: 4,
+    timeout: 100000
+});
 const s3Client = new client_s3_1.S3Client({
     region: process.env.REGION,
     endpoint: process.env.ENDPOINT,
@@ -65,6 +44,7 @@ const s3Client = new client_s3_1.S3Client({
     },
     requestHandler: new node_http_handler_1.NodeHttpHandler({
         connectionTimeout: 100000,
+        httpAgent: customHttpAgent
     })
 });
 function getAllFiles(folderPath) {
@@ -85,7 +65,7 @@ function uploadFolderTos3(s3filePath, localFilePath) {
     return __awaiter(this, void 0, void 0, function* () {
         let fileData;
         try {
-            console.log("uploadfoldertos3 path ", s3filePath, localFilePath);
+            console.log("uploadfoldertos3");
             if (!fs_1.default.existsSync(localFilePath)) {
                 throw new Error(`File not found: ${localFilePath}`);
             }
@@ -96,7 +76,7 @@ function uploadFolderTos3(s3filePath, localFilePath) {
                 Key: s3filePath,
                 Body: fileData,
             }));
-            console.log("folder uploaded to s3: ", s3filePath);
+            console.log("folder uploaded to object store ");
         }
         catch (err) {
             console.error("error ", err);
@@ -122,8 +102,7 @@ function getAllFilesFroms3(path) {
     return __awaiter(this, void 0, void 0, function* () {
         var _a;
         try {
-            console.log("getting all files from s3");
-            console.log("path: ", path);
+            console.log("getting all files from object store");
             const command = new client_s3_1.ListObjectsV2Command({
                 Bucket: process.env.BUCKET,
                 Prefix: path,
@@ -133,9 +112,7 @@ function getAllFilesFroms3(path) {
             //TODO: go through pathsArr and get every file in output folder
             if (!pathsArr)
                 return;
-            console.log("got paths array length: ", pathsArr.length);
-            // let filesPromises = pathsArr?.map(async (path) => { 
-            for (let path of pathsArr) {
+            let filesPromises = pathsArr === null || pathsArr === void 0 ? void 0 : pathsArr.map((path) => __awaiter(this, void 0, void 0, function* () {
                 if (path === null || path === undefined) {
                     console.error("path is null");
                     return;
@@ -150,9 +127,8 @@ function getAllFilesFroms3(path) {
                     createFiles(path, data);
                     yield delay(1000);
                 }
-            }
-            // })
-            // await Promise.all(filesPromises);
+            }));
+            yield Promise.all(filesPromises);
         }
         catch (err) {
             console.error("error getallfilesfroms3: ", err);
@@ -161,26 +137,18 @@ function getAllFilesFroms3(path) {
 }
 function removeLocalRepo(pth, id) {
     console.log("remove local repo");
-    // console.log("path ",pth);
     let fullPath = path_1.default.join(pth, id);
     execAsync(`rm -r ${fullPath}`);
-    // console.log("id ",id);
 }
 function checkRepoSize(repoUrl) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            console.log("Sending request for repo cloinig");
+            console.log("checkreposize");
             let [owner, repo] = repoUrl.split("/").slice(-2);
             repo = repo.split(".")[0];
             const apiUrl = `https://api.github.com/repos/${owner}/${repo}`;
             let response = yield axios_1.default.get(apiUrl);
-            console.log("request successful ", response);
-            console.log("response headers");
-            console.log(response.headers['x-ratelimit-limit']); // Total requests allowed
-            console.log(response.headers['x-ratelimit-remaining']); // Remaining requests
-            console.log(response.headers['x-ratelimit-reset']);
             let size = response.data.size;
-            // console.log("repo size: ",size);
             if (size >= 100000) {
                 return false;
             }

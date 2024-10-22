@@ -1,28 +1,21 @@
-// import {Client} from "@upstash/qstash";
 import {Redis} from "@upstash/redis";
 import express from "express";
-import {Readable} from 'stream';
+// import {Readable} from 'stream';
 import 'dotenv/config';
-import fs from 'fs';
+// import fs from 'fs';
 import cors from "cors";
+import axios from 'axios';
 import simpleGit from "simple-git";
 import path from "path";
 import {generate} from './utils';
-import {getAllFiles, checkRepoSize, checkIfPresent, removeLocalRepo,getAllFilesFroms3,uploadFolderTos3} from "./file";
-import {S3Client,PutObjectCommand, GetObjectCommand} from "@aws-sdk/client-s3";
+import {getAllFiles, checkIfPresent, removeLocalRepo,getAllFilesFroms3,uploadFolderTos3} from "./file";
+import {S3Client} from "@aws-sdk/client-s3";
 import {exec} from "child_process";
 import {promisify} from "util";
 import jwt from "jsonwebtoken";
 import { v4 as uuidv4 } from 'uuid';
-import { nextTick } from "process";
 import {Request, Response, NextFunction} from 'express';
 import {rateLimit} from 'express-rate-limit';
-
-async function delay(time: number){
-    return new Promise((resolve)=>{
-        setTimeout(resolve, time);
-    })
-}
 
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -33,7 +26,6 @@ const limiter = rateLimit({
 
 let execAsync = promisify(exec);
 let app = express();
-app.set('trust proxy', 1);
 app.use(cors({ origin: ['https://vrcl-frontend.vercel.app','http://localhost:5173'] }));
 app.use(express.json());
 let port = 3000;
@@ -41,70 +33,7 @@ const redis = new Redis({
     url:process.env.REDIS_URL,
     token:process.env.REDIS_TOKEN!});
 let queueName = "vercelque";
-
-// const s3Client = new S3Client({
-//     region:"eu-central",
-//     endpoint:"https://s3.eu-central-003.backblazeb2.com",
-//     credentials:{
-//         secretAccessKey:"K003nsWKvSQdr4QrWmFA4Y0mZTdw/uE", 
-//         accessKeyId:"0035fb03ac09cc80000000001"
-//     }
-// });
-const s3Client = new S3Client({
-    region:process.env.REGION,
-    endpoint:process.env.ENDPOINT,
-    credentials:{
-        secretAccessKey:process.env.SECERET_ACCESS_KEY ?? '', 
-        accessKeyId:process.env.ACCESS_KEY_ID ?? ''
-    }
-});
-// console.log("allfiles ",path.join(__dirname,"output/"));
-// app.get("/redis",async (req,res)=>{
-//     await redis.lpush(queueName,"data1");
-//     let peek = await redis.lrange(queueName,-1,-1);
-//     console.log("peek ",peek);
-//     let ans = await redis.rpop(queueName);
-//     console.log("ans ",ans);
-//     res.send("completed");
-// })
-
-// app.get("/test", async (req, res) => {
-//     let fileData;
-//     try{
-//         fileData = fs.readFileSync(path.join(__dirname,"my-first-object.txt"),"utf-8");
-//         console.log('file data ',fileData);
-//     }catch(err){
-//         console.error("error ",err);
-//     }
-//     await s3Client.send(
-//         new PutObjectCommand({
-//             Bucket: "first-v",
-//             Key: "newfolder/my-first-object.txt",
-//             Body: fileData,
-//         })
-//     );
-
-//     const { Body } = await s3Client.send(
-//         new GetObjectCommand({
-//         Bucket: "first-v",
-//         Key: "newfolder/my-first-object.txt",
-//         })
-//     );
-//     if(Body){
-//         const data = await streamToString(Body as NodeJS.ReadableStream);
-//         console.log("body ",data);
-//     }
-//     res.send("hellow");
-// })
-
-// function streamToString(stream: NodeJS.ReadableStream): Promise<string>{
-//     const chunks: Uint8Array[] = [];
-//     return new Promise((resolve,reject)=>{
-//         stream.on("data",(chunk)=> chunks.push(chunk));
-//         stream.on("error",(err)=> reject(err));
-//         stream.on("end",()=> resolve(Buffer.concat(chunks).toString("utf8")));
-//     })
-// }
+//redis.lpush(queueName,"v7z61");
 
 function verifyToken(req: Request,res: Response, next: NextFunction){
     try{
@@ -128,6 +57,18 @@ function verifyToken(req: Request,res: Response, next: NextFunction){
 
 //should put it in r2 and put in queue redis 
 app.post("/deploy",verifyToken ,async (req,res)=>{
+
+    //TODO: getting worker function ready
+    // axios.post(process.env.WORKER_ENDPOINT?? "",{
+    //     name:"Hello World"
+    // },{
+    //     headers:{
+    //         'Authorization':`Bearer ${process.env.WORKER_TOKEN}`,
+    //         'Content-Type':'application/json'
+    //     }
+    // })
+    axios.get(process.env.WORKER_ENDPOINT??"");
+
     console.log("/deploy hit");
     const repoUrl = req.body.repoUrl;
     let id = generate();
@@ -154,31 +95,19 @@ app.post("/deploy",verifyToken ,async (req,res)=>{
     let repoRoute = process.env.REPO_ROUTE || "repos/";
     let allFiles = getAllFiles(path.join(__dirname,outputRoute,id,"/")); //[localpath,localpathh,path]
 
-    // let allFilesPromises = allFiles.map(async (filePath)=>{
-    //     let repoFolderPath = repoRoute;
-    //     let absPathLength = path.join(__dirname,outputRoute).length;
-    //     repoFolderPath = path.join(repoFolderPath,filePath.slice(absPathLength));
-    //     console.log("uploading to ",repoFolderPath,filePath);
-    //     return uploadFolderTos3(repoFolderPath,filePath);
-    // })
-    // try {
-    //     await Promise.all(allFilesPromises);
-    //     console.log("upload to s3 complete ");
-    // } catch (err) {
-    //     console.error("promise failed ", err);
-    // }
-
-    // allFiles.map(async (filePath)=>{
-    for(let filePath of allFiles){
+    let allFilesPromises = allFiles.map(async (filePath)=>{
         let repoFolderPath = repoRoute;
         let absPathLength = path.join(__dirname,outputRoute).length;
         repoFolderPath = path.join(repoFolderPath,filePath.slice(absPathLength));
-        // console.log("uploading to ",repoFolderPath,filePath);
-        await delay(1000);
-        await uploadFolderTos3(repoFolderPath,filePath);
+        console.log("uploading to ",repoFolderPath,filePath);
+        return uploadFolderTos3(repoFolderPath,filePath);
+    })
+    try {
+        await Promise.all(allFilesPromises);
+        console.log("upload to s3 complete ");
+    } catch (err) {
+        console.error("promise failed ", err);
     }
-    // })
-
 
     //TODO: remove repo present locally
     // let repoPath = process.cwd();
@@ -186,15 +115,17 @@ app.post("/deploy",verifyToken ,async (req,res)=>{
     removeLocalRepo(repoPath,id);
 
     //push id in redis queue
-    console.log("pushing to redis");
+    console.log("pushing id to redis");
     await redis.lpush(queueName,id);
 
     //TODO: redis, set status of id to "building"
     await redis.hset(id,{status:"building"});
 
-    //TODO: delete output folder
+    //TODO: delete output folder - testing i think they are deleted
     //change dir to output 
-    // process.chdir();
+    // process.chdir("output");
+    // console.log("want to remvoe everythign inside output foler where am i?");
+    // console.log(process.cwd());
     //remove everything from it - rm -r *
     // await execAsync("rm -r *");
 
@@ -205,8 +136,8 @@ app.post("/deploy",verifyToken ,async (req,res)=>{
 
 app.get("/status",verifyToken ,async (req,res)=>{
     let id = req.query.id as string;
-    console.log("hit status with id ",id);
-    //TODO: get status from redis and send it back
+    console.log("hit status with id: ",id);
+    //:get status from redis and send it back
     let statusResponse = await redis.hget(id,"status");
     res.json({status:statusResponse});
 })
@@ -220,7 +151,7 @@ app.get("/deployment",async (req,res)=>{
 
     //TODO: check if already present
     if (await checkIfPresent(buildPath)) {
-        console.log("its present");
+        console.log("build already present");
         res.set("Content-Type", "text/html");
         return res.sendFile(path.join(buildFolder, `index.html`));
     }
@@ -231,7 +162,6 @@ app.get("/deployment",async (req,res)=>{
     //TODO: send it back with correct header 
     res.set("Content-Type","text/html");
     res.sendFile(path.join(buildFolder,`index.html`));
-    // res.send("done");
 })
 
 app.get("/token",limiter ,(req,res)=>{
@@ -249,7 +179,6 @@ app.post("/checkToken",(req,res)=>{
     }
     let token = req.body.token;
     let decoded = jwt.verify(token,process.env.SECERET_PHRASE);
-    console.log("decoded and ",decoded);
 })
 
 app.listen(port,()=>{

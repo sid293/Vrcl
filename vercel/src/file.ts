@@ -1,15 +1,13 @@
 import fs from 'fs';
 import axios from 'axios';
-import {S3Client, PutObjectCommand, ListObjectsV2Command, GetObjectCommand, ListObjectsV2CommandOutput} from "@aws-sdk/client-s3";
+import {S3Client, PutObjectCommand, ListObjectsV2Command, GetObjectCommand} from "@aws-sdk/client-s3";
 import {NodeHttpHandler} from "@smithy/node-http-handler";
 import {Agent as HttpAgent} from 'http';
-// import {NodeHttpHandler} from "@aws-sdk/node-http-handler";
 import path from 'path';
 import {dirname} from 'path';
-import {exec, spawn} from "child_process";
+import {exec} from "child_process";
 import {promisify} from "util";
 import {streamToString} from "./utils";
-import https from 'https';
 
 let execAsync = promisify(exec);
 let customHttpAgent = new HttpAgent({
@@ -26,16 +24,12 @@ const s3Client = new S3Client({
     },
     requestHandler:new NodeHttpHandler({
         connectionTimeout:100000,
-        // httpOptions:{
-        //     family:4
-        // }
         httpAgent: customHttpAgent
     })
 });
 
 export function getAllFiles(folderPath: string){
     let response: string[] = [];
-
     let allFilesAndFolders = fs.readdirSync(folderPath);
     allFilesAndFolders.map((file)=>{
         const fullFilePath = path.join(folderPath,file);
@@ -51,7 +45,7 @@ export function getAllFiles(folderPath: string){
 export async function uploadFolderTos3(s3filePath: string,localFilePath: string){
     let fileData;
     try{
-        console.log("uploadfoldertos3 path ", s3filePath, localFilePath);
+        console.log("uploadfoldertos3");
         if (!fs.existsSync(localFilePath)) {
             throw new Error(`File not found: ${localFilePath}`);
         }
@@ -64,7 +58,7 @@ export async function uploadFolderTos3(s3filePath: string,localFilePath: string)
                 Body: fileData,
             })
         );
-        console.log("folder uploaded to s3: ",s3filePath);
+        console.log("folder uploaded to object store ");
     } catch (err) {
         console.error("error ",err);
     }
@@ -86,68 +80,55 @@ async function delay(time: number){
     })
 }
 export async function getAllFilesFroms3(path: string){
-    try{
+    try {
+        console.log("getting all files from object store");
+        const command = new ListObjectsV2Command({
+            Bucket: process.env.BUCKET,
+            Prefix: path,
+        });
+        let response = await s3Client.send(command);
+        let pathsArr = response.Contents?.map((entry) => entry.Key); //[file,file]
 
-    console.log("getting all files from s3");
-    console.log("path: ",path);
-    const command = new ListObjectsV2Command({
-        Bucket: process.env.BUCKET,
-        Prefix: path,
-    });
-    let response = await s3Client.send(command);
-    let pathsArr = response.Contents?.map((entry)=>entry.Key); //[file,file]
-
-    //TODO: go through pathsArr and get every file in output folder
-    if(!pathsArr) return;
-    console.log("got paths array length: ", pathsArr.length);
-    // let filesPromises = pathsArr?.map(async (path) => { 
-    for(let path of pathsArr){
-        if(path === null || path === undefined){
-            console.error("path is null");
-            return;
-        }
-        const { Body } = await s3Client.send(
-            new GetObjectCommand({
-                Bucket: "first-v",
-                Key: path,
-            })
-        );
-        if (Body) {
-            const data = await streamToString(Body as NodeJS.ReadableStream);
-            //TODO: based on the "path" and "data" create folder in output
-            createFiles(path,data);
-            await delay(1000);
-        }
-    }
-    // })
-    // await Promise.all(filesPromises);
-}catch(err){
+        //TODO: go through pathsArr and get every file in output folder
+        if (!pathsArr) return;
+        let filesPromises = pathsArr?.map(async (path) => {
+            if (path === null || path === undefined) {
+                console.error("path is null");
+                return;
+            }
+            const { Body } = await s3Client.send(
+                new GetObjectCommand({
+                    Bucket: "first-v",
+                    Key: path,
+                })
+            );
+            if (Body) {
+                const data = await streamToString(Body as NodeJS.ReadableStream);
+                //TODO: based on the "path" and "data" create folder in output
+                createFiles(path, data);
+                await delay(1000);
+            }
+        })
+        await Promise.all(filesPromises);
+    } catch (err) {
     console.error("error getallfilesfroms3: ",err);
 }
 }
 
 export function removeLocalRepo(pth: string, id: string){
     console.log("remove local repo");
-    // console.log("path ",pth);
     let fullPath = path.join(pth,id);
     execAsync(`rm -r ${fullPath}`);
-    // console.log("id ",id);
 }
 
 export async function checkRepoSize(repoUrl: string){
     try {
-        console.log("Sending request for repo cloinig");
+        console.log("checkreposize");
         let [owner, repo] = repoUrl.split("/").slice(-2);
         repo = repo.split(".")[0];
         const apiUrl = `https://api.github.com/repos/${owner}/${repo}`;
         let response = await axios.get(apiUrl);
-        console.log("request successful ", response);
-        console.log("response headers");
-        console.log(response.headers['x-ratelimit-limit']);    // Total requests allowed
-        console.log(response.headers['x-ratelimit-remaining']); // Remaining requests
-        console.log(response.headers['x-ratelimit-reset']);
         let size = response.data.size;
-        // console.log("repo size: ",size);
         if (size >= 100000) {
             return false;
         }
@@ -156,7 +137,6 @@ export async function checkRepoSize(repoUrl: string){
         return false;
     }
     return true;
-
 }
 
 export async function checkIfPresent(buildPath: string){

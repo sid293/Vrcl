@@ -9,6 +9,7 @@ export default function Form({setDeployments}: {setDeployments: ((deployments: s
     let [id, setId] = useState("");
     let [status,setStatus] = useState("Ready");
     let [isButtonDisabled, setIsButtonDisabled] = useState(false);
+    let [delayTime, setDelayTime] = useState(3000);
 
     let getDeployedLink = async (pid: string)=>{
         // let response = await axios.get(backendUrl+`status?id=${id}`);
@@ -43,7 +44,7 @@ export default function Form({setDeployments}: {setDeployments: ((deployments: s
 
 
 
-    let pollingStatus = async ()=>{
+    let pollingStatus = async (delayTime: number)=>{
         // if(!pid){
         //     console.log("id not ");
         //     return;
@@ -61,7 +62,7 @@ export default function Form({setDeployments}: {setDeployments: ((deployments: s
             console.log("response is ",response.data.status);
             // if(status !== response.data.status){
                 //why not getting set
-        await new Promise(resolve => setTimeout(resolve,3000));
+        await new Promise(resolve => setTimeout(resolve,delayTime));
         let responseStatus = response.data.status;
         // let postDots = "..."; maybe implement this way
         console.log("response status ",responseStatus);
@@ -72,7 +73,7 @@ export default function Form({setDeployments}: {setDeployments: ((deployments: s
                 responseStatus = "building...";
             }
         }
-    setStatus(responseStatus);
+        setStatus(responseStatus);
         // }
         //TODO: get deployed link if success
     }
@@ -92,7 +93,9 @@ export default function Form({setDeployments}: {setDeployments: ((deployments: s
         console.log("use effect running");
         console.log("status is ",status);
         if(status !== "deployed"){
-            pollingStatus();
+            setDelayTime((prev)=> prev+1000);
+            console.log("new delay time: ",delayTime);
+            pollingStatus(delayTime);
         } else {
             (async() => {
                 console.log("status is deployed");

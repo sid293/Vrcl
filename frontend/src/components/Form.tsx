@@ -140,7 +140,7 @@ export default function Form({setDeployments}: {setDeployments: ((deployments: s
             <div className="bg-zinc-900	h-12 text-4xl font-semibold rounded-tr-lg rounded-tl-lg">Repository link</div>
             <div>{status}</div>
             <div>
-                <input onChange={(e)=>{setRepoLink(e.target.value)}} value={repoLink} placeholder="Enter github link" className={`px-3 h-10 w-60 border-4 rounded-lg ${status !== "Ready"?"border-blue-500  animate-pulse":""} `} />
+                <input onChange={(e)=>{setRepoLink(e.target.value)}} value={repoLink} placeholder="Enter github link" className={`px-3 h-10 w-60 border-2 rounded-lg ${status !== "Ready"?"border-blue-500  animate-pulse":""} `} />
             </div>
             <div>
                 <button disabled={isButtonDisabled} className="disabled:bg-slate-400" onClick={() => handleDeploy()}>

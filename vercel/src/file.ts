@@ -1,8 +1,6 @@
 import fs from 'fs';
 import axios from 'axios';
 import {S3Client, PutObjectCommand, ListObjectsV2Command, GetObjectCommand} from "@aws-sdk/client-s3";
-import {NodeHttpHandler} from "@smithy/node-http-handler";
-import {Agent as HttpAgent} from 'http';
 import path from 'path';
 import {dirname} from 'path';
 import {exec} from "child_process";
@@ -10,10 +8,6 @@ import {promisify} from "util";
 import {streamToString} from "./utils";
 
 let execAsync = promisify(exec);
-let customHttpAgent = new HttpAgent({
-    family:4,
-    timeout:100000
-})
 
 const s3Client = new S3Client({
     region:process.env.REGION,
@@ -21,11 +15,7 @@ const s3Client = new S3Client({
     credentials:{
         secretAccessKey:process.env.SECERET_ACCESS_KEY ?? '', 
         accessKeyId:process.env.ACCESS_KEY_ID ?? ''
-    },
-    requestHandler:new NodeHttpHandler({
-        connectionTimeout:100000,
-        httpAgent: customHttpAgent
-    })
+    }
 });
 
 export function getAllFiles(folderPath: string){
@@ -50,10 +40,10 @@ export async function uploadFolderTos3(s3filePath: string,localFilePath: string)
             throw new Error(`File not found: ${localFilePath}`);
         }
         fileData = fs.readFileSync(localFilePath);
-        console.log("file data read success");
         await s3Client.send(
             new PutObjectCommand({
                 Bucket: process.env.BUCKET,
+                // Bucket:"first-v",
                 Key: s3filePath,
                 Body: fileData,
             })
@@ -84,6 +74,7 @@ export async function getAllFilesFroms3(path: string){
         console.log("getting all files from object store");
         const command = new ListObjectsV2Command({
             Bucket: process.env.BUCKET,
+            // Bucket: "first-v",
             Prefix: path,
         });
         let response = await s3Client.send(command);
@@ -116,7 +107,7 @@ export async function getAllFilesFroms3(path: string){
 }
 
 export function removeLocalRepo(pth: string, id: string){
-    console.log("remove local repo");
+    console.log("remove local repo from: ",pth,id);
     let fullPath = path.join(pth,id);
     execAsync(`rm -r ${fullPath}`);
 }

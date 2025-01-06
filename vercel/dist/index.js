@@ -36,7 +36,9 @@ const limiter = (0, express_rate_limit_1.rateLimit)({
 });
 let execAsync = (0, util_1.promisify)(child_process_1.exec);
 let app = (0, express_1.default)();
-app.use((0, cors_1.default)({ origin: ['https://vrcl-frontend.vercel.app', 'http://localhost:5173'] }));
+app.set("trust proxy", 1);
+// app.use(cors({ origin: ['https://vrcl-frontend.vercel.app','http://localhost:5173','http://34.29.188.169'] }));
+app.use((0, cors_1.default)());
 app.use(express_1.default.json());
 let port = 3000;
 const redis = new redis_1.Redis({
@@ -44,7 +46,7 @@ const redis = new redis_1.Redis({
     token: process.env.REDIS_TOKEN
 });
 let queueName = "vercelque";
-//redis.lpush(queueName,"v7z61");
+//redis.lpush(queueName,"ycwm2");
 function verifyToken(req, res, next) {
     try {
         if (!process.env.SECERET_PHRASE) {
@@ -67,17 +69,7 @@ function verifyToken(req, res, next) {
 //should put it in r2 and put in queue redis 
 app.post("/deploy", verifyToken, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
-    //TODO: getting worker function ready
-    // axios.post(process.env.WORKER_ENDPOINT?? "",{
-    //     name:"Hello World"
-    // },{
-    //     headers:{
-    //         'Authorization':`Bearer ${process.env.WORKER_TOKEN}`,
-    //         'Content-Type':'application/json'
-    //     }
-    // })
-    axios_1.default.get((_a = process.env.WORKER_ENDPOINT) !== null && _a !== void 0 ? _a : "");
-    console.log("/deploy hit");
+    console.log("/deploy hit:");
     const repoUrl = req.body.repoUrl;
     let id = (0, utils_1.generate)();
     //TODO: redis, set status of id to cloning
@@ -95,8 +87,16 @@ app.post("/deploy", verifyToken, (req, res) => __awaiter(void 0, void 0, void 0,
         console.error("Error: Git clone failed");
         return res.send({ success: false, error: "Git clone failed" });
     }
-    // return;
-    //TODO: GET FILE DATA AND PUT FILE IN S3 BUCKET WITH DTA
+    //START WORKER 
+    try {
+        axios_1.default.get((_a = process.env.WORKER_ENDPOINT) !== null && _a !== void 0 ? _a : "", { timeout: 50000 });
+    }
+    catch (err) {
+        console.error("backend worker failed: ", err);
+        yield redis.hset(id, { status: "Failed" });
+        return res.send({ success: false, error: "Backend down" });
+    }
+    //TODO: clone FILE DATA AND PUT FILE IN S3 BUCKET WITH DTA
     let outputRoute = process.env.OUTPUT_ROUTE || "output/";
     let repoRoute = process.env.REPO_ROUTE || "repos/";
     let allFiles = (0, file_1.getAllFiles)(path_1.default.join(__dirname, outputRoute, id, "/")); //[localpath,localpathh,path]
@@ -123,13 +123,6 @@ app.post("/deploy", verifyToken, (req, res) => __awaiter(void 0, void 0, void 0,
     yield redis.lpush(queueName, id);
     //TODO: redis, set status of id to "building"
     yield redis.hset(id, { status: "building" });
-    //TODO: delete output folder - testing i think they are deleted
-    //change dir to output 
-    // process.chdir("output");
-    // console.log("want to remvoe everythign inside output foler where am i?");
-    // console.log(process.cwd());
-    //remove everything from it - rm -r *
-    // await execAsync("rm -r *");
     res.json({
         id: id
     });
@@ -168,13 +161,13 @@ app.get("/token", limiter, (req, res) => {
     let token = jsonwebtoken_1.default.sign({ userId }, process.env.SECERET_PHRASE);
     res.json({ token });
 });
-app.post("/checkToken", (req, res) => {
-    if (!process.env.SECERET_PHRASE) {
-        throw new Error('seceret passphrase not defined');
-    }
-    let token = req.body.token;
-    let decoded = jsonwebtoken_1.default.verify(token, process.env.SECERET_PHRASE);
-});
+// app.post("/checkToken",(req,res)=>{
+//     if(!process.env.SECERET_PHRASE){
+//         throw new Error('seceret passphrase not defined');
+//     }
+//     let token = req.body.token;
+//     let decoded = jwt.verify(token,process.env.SECERET_PHRASE);
+// })
 app.listen(port, () => {
     console.log("app listening on port ", port);
 });

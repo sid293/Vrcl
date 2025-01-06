@@ -23,29 +23,19 @@ exports.checkIfPresent = checkIfPresent;
 const fs_1 = __importDefault(require("fs"));
 const axios_1 = __importDefault(require("axios"));
 const client_s3_1 = require("@aws-sdk/client-s3");
-const node_http_handler_1 = require("@smithy/node-http-handler");
-const http_1 = require("http");
 const path_1 = __importDefault(require("path"));
 const path_2 = require("path");
 const child_process_1 = require("child_process");
 const util_1 = require("util");
 const utils_1 = require("./utils");
 let execAsync = (0, util_1.promisify)(child_process_1.exec);
-let customHttpAgent = new http_1.Agent({
-    family: 4,
-    timeout: 100000
-});
 const s3Client = new client_s3_1.S3Client({
     region: process.env.REGION,
     endpoint: process.env.ENDPOINT,
     credentials: {
         secretAccessKey: (_a = process.env.SECERET_ACCESS_KEY) !== null && _a !== void 0 ? _a : '',
         accessKeyId: (_b = process.env.ACCESS_KEY_ID) !== null && _b !== void 0 ? _b : ''
-    },
-    requestHandler: new node_http_handler_1.NodeHttpHandler({
-        connectionTimeout: 100000,
-        httpAgent: customHttpAgent
-    })
+    }
 });
 function getAllFiles(folderPath) {
     let response = [];
@@ -70,9 +60,9 @@ function uploadFolderTos3(s3filePath, localFilePath) {
                 throw new Error(`File not found: ${localFilePath}`);
             }
             fileData = fs_1.default.readFileSync(localFilePath);
-            console.log("file data read success");
             yield s3Client.send(new client_s3_1.PutObjectCommand({
                 Bucket: process.env.BUCKET,
+                // Bucket:"first-v",
                 Key: s3filePath,
                 Body: fileData,
             }));
@@ -105,6 +95,7 @@ function getAllFilesFroms3(path) {
             console.log("getting all files from object store");
             const command = new client_s3_1.ListObjectsV2Command({
                 Bucket: process.env.BUCKET,
+                // Bucket: "first-v",
                 Prefix: path,
             });
             let response = yield s3Client.send(command);
@@ -136,7 +127,7 @@ function getAllFilesFroms3(path) {
     });
 }
 function removeLocalRepo(pth, id) {
-    console.log("remove local repo");
+    console.log("remove local repo from: ", pth, id);
     let fullPath = path_1.default.join(pth, id);
     execAsync(`rm -r ${fullPath}`);
 }

@@ -1,4 +1,4 @@
-FROM node:latest
+FROM node:20.17
 
 COPY package*.json . 
 

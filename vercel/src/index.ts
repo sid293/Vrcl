@@ -9,7 +9,6 @@ import simpleGit from "simple-git";
 import path from "path";
 import {generate} from './utils';
 import {getAllFiles, checkIfPresent, removeLocalRepo,getAllFilesFroms3,uploadFolderTos3} from "./file";
-import {S3Client} from "@aws-sdk/client-s3";
 import {exec} from "child_process";
 import {promisify} from "util";
 import jwt from "jsonwebtoken";
@@ -26,14 +25,16 @@ const limiter = rateLimit({
 
 let execAsync = promisify(exec);
 let app = express();
-app.use(cors({ origin: ['https://vrcl-frontend.vercel.app','http://localhost:5173'] }));
+app.set("trust proxy",1);
+app.use(cors({ origin: ['https://vrcl-frontend.vercel.app','http://localhost:5173','http://34.29.188.169'] }));
+// app.use(cors());
 app.use(express.json());
 let port = 3000;
 const redis = new Redis({
     url:process.env.REDIS_URL,
     token:process.env.REDIS_TOKEN!});
 let queueName = "vercelque";
-//redis.lpush(queueName,"v7z61");
+//redis.lpush(queueName,"ycwm2");
 
 function verifyToken(req: Request,res: Response, next: NextFunction){
     try{
@@ -58,18 +59,7 @@ function verifyToken(req: Request,res: Response, next: NextFunction){
 //should put it in r2 and put in queue redis 
 app.post("/deploy",verifyToken ,async (req,res)=>{
 
-    //TODO: getting worker function ready
-    // axios.post(process.env.WORKER_ENDPOINT?? "",{
-    //     name:"Hello World"
-    // },{
-    //     headers:{
-    //         'Authorization':`Bearer ${process.env.WORKER_TOKEN}`,
-    //         'Content-Type':'application/json'
-    //     }
-    // })
-    axios.get(process.env.WORKER_ENDPOINT??"");
-
-    console.log("/deploy hit");
+    console.log("/deploy hit:");
     const repoUrl = req.body.repoUrl;
     let id = generate();
 
@@ -88,9 +78,16 @@ app.post("/deploy",verifyToken ,async (req,res)=>{
         return res.send({success:false, error:"Git clone failed"});
     }
 
-    // return;
+    //START WORKER 
+    try{
+        axios.get(process.env.WORKER_ENDPOINT??"",{timeout:50000});
+    }catch(err){
+        console.error("backend worker failed: ",err);
+        await redis.hset(id,{status:"Failed"});
+        return res.send({success:false, error:"Backend down"});
+    }
 
-    //TODO: GET FILE DATA AND PUT FILE IN S3 BUCKET WITH DTA
+    //TODO: clone FILE DATA AND PUT FILE IN S3 BUCKET WITH DTA
     let outputRoute = process.env.OUTPUT_ROUTE || "output/";
     let repoRoute = process.env.REPO_ROUTE || "repos/";
     let allFiles = getAllFiles(path.join(__dirname,outputRoute,id,"/")); //[localpath,localpathh,path]
@@ -120,14 +117,6 @@ app.post("/deploy",verifyToken ,async (req,res)=>{
 
     //TODO: redis, set status of id to "building"
     await redis.hset(id,{status:"building"});
-
-    //TODO: delete output folder - testing i think they are deleted
-    //change dir to output 
-    // process.chdir("output");
-    // console.log("want to remvoe everythign inside output foler where am i?");
-    // console.log(process.cwd());
-    //remove everything from it - rm -r *
-    // await execAsync("rm -r *");
 
     res.json({
         id:id
@@ -173,13 +162,13 @@ app.get("/token",limiter ,(req,res)=>{
     res.json({token});
 })
 
-app.post("/checkToken",(req,res)=>{
-    if(!process.env.SECERET_PHRASE){
-        throw new Error('seceret passphrase not defined');
-    }
-    let token = req.body.token;
-    let decoded = jwt.verify(token,process.env.SECERET_PHRASE);
-})
+// app.post("/checkToken",(req,res)=>{
+//     if(!process.env.SECERET_PHRASE){
+//         throw new Error('seceret passphrase not defined');
+//     }
+//     let token = req.body.token;
+//     let decoded = jwt.verify(token,process.env.SECERET_PHRASE);
+// })
 
 app.listen(port,()=>{
     console.log("app listening on port ",port);
